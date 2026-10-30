@@ -18,6 +18,14 @@ export class Enemy {
         this.pathIndex = 0;
     }
 
+    isPathBlocked(grid) {
+        if (!this.path) return false;
+        for (let i = this.pathIndex; i < this.path.length; i++) {
+            if (!grid.isWalkable(this.path[i].col, this.path[i].row)) return true;
+        }
+        return false;
+    }
+
     update(dt, grid) {
         if (!this.path || this.reachedGoal) return;
 

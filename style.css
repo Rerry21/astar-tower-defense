@@ -14,9 +14,11 @@ body {
 }
 
 canvas {
-    background: #25252d;
-    border: 2px solid #3a3a46;
     display: block;
-    max-width: 100vw;
-    max-height: 100vh;
+    width: min(100vw, 150vh);
+    height: auto;
+    aspect-ratio: 3 / 2;
+    background: #25252d;
+    box-shadow: 0 0 0 2px #3a3a46;
+    cursor: crosshair;
 }
