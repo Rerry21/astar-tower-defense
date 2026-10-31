@@ -1,22 +1,32 @@
 import { Enemy } from "./Enemy.js";
+import { ENEMY_TYPES } from "./EnemyTypes.js";
 import { drawPath } from "../pathfinding/PathRenderer.js";
 
 export class EnemyManager {
-    constructor(grid, astar) {
+    constructor(grid, astar, callbacks) {
         this.grid = grid;
         this.astar = astar;
+        this.onKill = callbacks.onKill;
+        this.onLeak = callbacks.onLeak;
         this.enemies = [];
         this.showPaths = true;
         this.lastRepaths = 0;
         this.totalRepaths = 0;
     }
 
-    spawn() {
+    spawn(typeName, healthMult = 1, speedMult = 1, rewardMult = 1) {
         const { spawn, goal } = this.grid;
         const path = this.astar.findPath(spawn.col, spawn.row, goal.col, goal.row);
         if (!path) return null;
 
-        const enemy = new Enemy(this.grid.cellCenterX(spawn.col), this.grid.cellCenterY(spawn.row));
+        const enemy = new Enemy(
+            this.grid.cellCenterX(spawn.col),
+            this.grid.cellCenterY(spawn.row),
+            ENEMY_TYPES[typeName],
+            healthMult,
+            speedMult,
+            rewardMult
+        );
         enemy.setPath(path);
         this.enemies.push(enemy);
         return enemy;
@@ -57,8 +67,15 @@ export class EnemyManager {
     update(dt) {
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const enemy = this.enemies[i];
-            enemy.update(dt, this.grid);
-            if (enemy.reachedGoal) this.enemies.splice(i, 1);
+            if (!enemy.dead) enemy.update(dt, this.grid);
+
+            if (enemy.dead) {
+                this.enemies.splice(i, 1);
+                this.onKill(enemy);
+            } else if (enemy.reachedGoal) {
+                this.enemies.splice(i, 1);
+                this.onLeak(enemy);
+            }
         }
     }
 

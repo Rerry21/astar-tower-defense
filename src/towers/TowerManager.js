@@ -1,10 +1,12 @@
 import { Tower } from "./Tower.js";
+import { TOWER_TYPES, DEFAULT_TOWER } from "./TowerTypes.js";
 import { CellType } from "../core/Grid.js";
 
 export class TowerManager {
-    constructor(grid, pathManager) {
+    constructor(grid, pathManager, projectiles) {
         this.grid = grid;
         this.pathManager = pathManager;
+        this.projectiles = projectiles;
         this.towers = new Map();
         this.routeCache = { col: -1, row: -1, version: -1, ok: false };
     }
@@ -13,7 +15,12 @@ export class TowerManager {
         return row * this.grid.cols + col;
     }
 
-    check(col, row, enemies) {
+    towerAt(col, row) {
+        if (!this.grid.inBounds(col, row)) return null;
+        return this.towers.get(this.key(col, row)) || null;
+    }
+
+    check(col, row, enemies, money, typeName = DEFAULT_TOWER) {
         const grid = this.grid;
         if (!grid.inBounds(col, row)) return "Outside the map";
         if (grid.getType(col, row) !== CellType.WALKABLE) return "Cell is occupied";
@@ -22,6 +29,7 @@ export class TowerManager {
                 return "Enemy in the way";
             }
         }
+        if (money < TOWER_TYPES[typeName].cost) return "Not enough money";
         if (!this.routeStillExists(col, row)) return "Would block the route";
         return null;
     }
@@ -37,24 +45,38 @@ export class TowerManager {
         return cache.ok;
     }
 
-    place(col, row, enemies) {
-        if (this.check(col, row, enemies) !== null) return false;
-        this.towers.set(this.key(col, row), new Tower(col, row, this.grid));
+    place(col, row, enemies, money, typeName = DEFAULT_TOWER) {
+        if (this.check(col, row, enemies, money, typeName) !== null) return null;
+        const tower = new Tower(col, row, this.grid, TOWER_TYPES[typeName]);
+        this.towers.set(this.key(col, row), tower);
         this.grid.setType(col, row, CellType.TOWER);
-        return true;
+        return tower;
     }
 
     remove(col, row) {
-        if (!this.grid.inBounds(col, row)) return false;
-        const key = this.key(col, row);
-        if (!this.towers.has(key)) return false;
-        this.towers.delete(key);
+        const tower = this.towerAt(col, row);
+        if (!tower) return null;
+        this.towers.delete(this.key(col, row));
         this.grid.setType(col, row, CellType.WALKABLE);
-        return true;
+        return Math.floor(tower.invested * tower.sellRatio);
+    }
+
+    update(dt, enemies) {
+        for (const tower of this.towers.values()) tower.update(dt, enemies, this.projectiles);
     }
 
     render(ctx) {
-        for (const tower of this.towers.values()) tower.render(ctx, this.grid.cellSize);
+        for (const tower of this.towers.values()) tower.render(ctx);
+    }
+
+    drawRange(ctx, x, y, radius) {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.07)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
     }
 
     renderPreview(ctx, col, row, reason) {
@@ -62,6 +84,8 @@ export class TowerManager {
         if (!grid.inBounds(col, row)) return;
         const s = grid.cellSize;
         const ok = reason === null;
+
+        this.drawRange(ctx, grid.cellCenterX(col), grid.cellCenterY(row), TOWER_TYPES[DEFAULT_TOWER].range * s);
 
         ctx.fillStyle = ok ? "rgba(74, 222, 128, 0.45)" : "rgba(239, 68, 68, 0.45)";
         ctx.fillRect(col * s, row * s, s, s);

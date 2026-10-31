@@ -1,12 +1,20 @@
 import { Grid } from "./Grid.js";
+import { GameState } from "./GameState.js";
 import { Input } from "./Input.js";
 import { level1 } from "./maps.js";
 import { AStar } from "../pathfinding/AStar.js";
 import { PathManager } from "../pathfinding/PathManager.js";
 import { EnemyManager } from "../enemies/EnemyManager.js";
 import { TowerManager } from "../towers/TowerManager.js";
+import { ProjectileManager } from "../towers/ProjectileManager.js";
+import { WaveManager } from "../waves/WaveManager.js";
+import { HUD } from "../ui/HUD.js";
 
 const CELL_SIZE = 32;
+const START_MONEY = 250;
+const START_LIVES = 20;
+const WAVE_BONUS = 25;
+const SPEEDS = [1, 2, 3];
 
 export class Game {
     constructor(canvas) {
@@ -22,14 +30,30 @@ export class Game {
         this.fpsFrames = 0;
         this.fpsTimer = 0;
 
+        this.input = new Input(canvas);
+        this.hud = new HUD();
+        this.showDebug = true;
+
+        window.addEventListener("keydown", (e) => this.onKey(e));
+
+        this.reset();
+    }
+
+    reset() {
         this.grid = new Grid(level1, CELL_SIZE);
+        this.state = new GameState(START_MONEY, START_LIVES);
         this.astar = new AStar(this.grid);
         this.pathManager = new PathManager(this.grid);
-        this.enemies = new EnemyManager(this.grid, this.astar);
-        this.towers = new TowerManager(this.grid, this.pathManager);
-        this.input = new Input(canvas);
-
-        this.spawnTimer = 0;
+        this.projectiles = new ProjectileManager();
+        this.enemies = new EnemyManager(this.grid, this.astar, {
+            onKill: (enemy) => this.state.earn(enemy.reward),
+            onLeak: (enemy) => this.state.loseLives(enemy.damage),
+        });
+        this.towers = new TowerManager(this.grid, this.pathManager, this.projectiles);
+        this.waves = new WaveManager();
+        this.paused = false;
+        this.speed = 1;
+        this.input.clicks.length = 0;
     }
 
     start() {
@@ -50,15 +74,55 @@ export class Game {
         requestAnimationFrame((t) => this.loop(t));
     }
 
+    onKey(e) {
+        const key = e.key.toLowerCase();
+        if (e.code === "Space") {
+            e.preventDefault();
+            this.runAction("wave");
+        } else if (key === "p") this.runAction("pause");
+        else if (key === "f") this.runAction("speed");
+        else if (key === "d") this.showDebug = !this.showDebug;
+        else if (key === "v") this.enemies.showPaths = !this.enemies.showPaths;
+        else if (key === "r" && this.state.status === "gameover") this.runAction("restart");
+    }
+
+    runAction(action) {
+        if (action === "restart") {
+            this.reset();
+            return;
+        }
+        if (this.state.status !== "playing") return;
+        if (action === "wave") this.waves.start();
+        else if (action === "pause") this.paused = !this.paused;
+        else if (action === "speed") this.speed = SPEEDS[(SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length];
+    }
+
     handleInput() {
         let click;
         while ((click = this.input.nextClick())) {
+            if (click.button === 0) {
+                const action = this.hud.hitTest(click.x, click.y, this);
+                if (action) {
+                    this.runAction(action);
+                    continue;
+                }
+            }
+            if (this.state.status !== "playing") continue;
+
             const col = this.grid.worldToCol(click.x);
             const row = this.grid.worldToRow(click.y);
             if (click.button === 0) {
-                if (this.towers.place(col, row, this.enemies.enemies)) this.enemies.onGridChanged(false);
+                const tower = this.towers.place(col, row, this.enemies.enemies, this.state.money);
+                if (tower) {
+                    this.state.spend(tower.cost);
+                    this.enemies.onGridChanged(false);
+                }
             } else if (click.button === 2) {
-                if (this.towers.remove(col, row)) this.enemies.onGridChanged(true);
+                const refund = this.towers.remove(col, row);
+                if (refund !== null) {
+                    this.state.earn(refund);
+                    this.enemies.onGridChanged(true);
+                }
             }
         }
     }
@@ -74,13 +138,18 @@ export class Game {
 
         this.handleInput();
 
-        this.spawnTimer -= dt;
-        if (this.spawnTimer <= 0) {
-            this.enemies.spawn();
-            this.spawnTimer = 2;
+        if (this.paused) return;
+        for (let i = 0; i < this.speed; i++) {
+            if (this.state.status !== "playing") break;
+            this.step(dt);
         }
+    }
 
+    step(dt) {
+        if (this.waves.update(dt, this.enemies)) this.state.earn(WAVE_BONUS);
         this.enemies.update(dt);
+        this.towers.update(dt, this.enemies.enemies);
+        this.projectiles.update(dt);
     }
 
     render() {
@@ -90,19 +159,26 @@ export class Game {
         this.grid.render(ctx);
         this.towers.render(ctx);
         this.enemies.render(ctx);
+        this.projectiles.render(ctx);
 
-        if (this.input.inside) {
+        if (this.input.inside && this.state.status === "playing") {
             const col = this.grid.worldToCol(this.input.x);
             const row = this.grid.worldToRow(this.input.y);
             if (this.grid.inBounds(col, row)) {
-                this.towers.renderPreview(ctx, col, row, this.towers.check(col, row, this.enemies.enemies));
+                const tower = this.towers.towerAt(col, row);
+                if (tower) {
+                    this.towers.drawRange(ctx, tower.x, tower.y, tower.rangePx);
+                } else {
+                    this.towers.renderPreview(ctx, col, row, this.towers.check(col, row, this.enemies.enemies, this.state.money));
+                }
             }
         }
 
-        this.renderHud(ctx);
+        if (this.showDebug) this.renderDebug(ctx);
+        this.hud.render(ctx, this);
     }
 
-    renderHud(ctx) {
+    renderDebug(ctx) {
         const enemyStats = this.astar.lastStats;
         const checkStats = this.pathManager.checker.lastStats;
 
@@ -121,13 +197,6 @@ export class Game {
             10,
             46
         );
-        ctx.fillText(
-            `Repaths: last change ${this.enemies.lastRepaths} | total ${this.enemies.totalRepaths}`,
-            10,
-            64
-        );
-
-        ctx.textBaseline = "bottom";
-        ctx.fillText("Left click: place tower | Right click: remove tower", 10, this.height - 10);
+        ctx.fillText(`Repaths: last change ${this.enemies.lastRepaths} | total ${this.enemies.totalRepaths}`, 10, 64);
     }
 }
