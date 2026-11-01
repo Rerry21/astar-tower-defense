@@ -13,6 +13,10 @@ export const TOWER_TYPES = {
         sellRatio: 0.7,
         color: "#60a5fa",
         outline: "#1e3a8a",
+        upgrades: [
+            { cost: 60, damage: 32, range: 4.5, attackInterval: 0.52 },
+            { cost: 110, damage: 50, range: 5, attackInterval: 0.42 },
+        ],
     },
     bomb: {
         label: "Bomb",
@@ -28,6 +32,10 @@ export const TOWER_TYPES = {
         sellRatio: 0.7,
         color: "#f97316",
         outline: "#7c2d12",
+        upgrades: [
+            { cost: 100, damage: 55, range: 3.75, attackInterval: 1.25, splash: 1.8 },
+            { cost: 180, damage: 85, range: 4, attackInterval: 1.1, splash: 2 },
+        ],
     },
     sniper: {
         label: "Sniper",
@@ -43,6 +51,10 @@ export const TOWER_TYPES = {
         sellRatio: 0.7,
         color: "#a78bfa",
         outline: "#4c1d95",
+        upgrades: [
+            { cost: 120, damage: 150, range: 9, attackInterval: 1.6 },
+            { cost: 220, damage: 240, range: 10, attackInterval: 1.35 },
+        ],
     },
 };
 

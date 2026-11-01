@@ -18,15 +18,34 @@ const TOWER_BUTTONS = Object.keys(TOWER_TYPES).map((type, i) => ({
     h: 26,
 }));
 
+const PANEL = { x: 736, y: 10, w: 214, h: 240 };
+const UPGRADE_BTN = { x: 748, y: 172, w: 190, h: 30 };
+const SELL_BTN = { x: 748, y: 210, w: 190, h: 26 };
+
 const RESTART = { x: 400, y: 340, w: 160, h: 48 };
 
 function inside(x, y, r) {
     return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
 }
 
+function fmt(value) {
+    return String(Math.round(value * 100) / 100);
+}
+
+function capitalize(text) {
+    return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 export class HUD {
     hitTest(x, y, game) {
         if (game.state.status === "gameover") return inside(x, y, RESTART) ? "restart" : null;
+
+        if (game.selectedTower) {
+            if (inside(x, y, UPGRADE_BTN)) return "upgrade";
+            if (inside(x, y, SELL_BTN)) return "sell";
+            if (inside(x, y, PANEL)) return "panel";
+        }
+
         for (let i = 0; i < BUTTONS.length; i++) {
             if (inside(x, y, BUTTONS[i])) return BUTTONS[i].id;
         }
@@ -36,10 +55,14 @@ export class HUD {
         return null;
     }
 
-    drawButton(ctx, rect, label, enabled) {
-        ctx.fillStyle = enabled ? "#2563eb" : "#33333d";
+    overPanel(x, y, game) {
+        return game.selectedTower !== null && game.state.status === "playing" && inside(x, y, PANEL);
+    }
+
+    drawButton(ctx, rect, label, enabled, fill = "#2563eb", edge = "#60a5fa") {
+        ctx.fillStyle = enabled ? fill : "#33333d";
         ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-        ctx.strokeStyle = enabled ? "#60a5fa" : "#4a4a56";
+        ctx.strokeStyle = enabled ? edge : "#4a4a56";
         ctx.lineWidth = 2;
         ctx.strokeRect(rect.x + 1, rect.y + 1, rect.w - 2, rect.h - 2);
         ctx.fillStyle = enabled ? "#ffffff" : "#8b8b99";
@@ -68,6 +91,58 @@ export class HUD {
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
         ctx.fillText(`${index + 1} ${def.label} $${def.cost}`, rect.x + 28, rect.y + rect.h / 2);
+    }
+
+    renderPanel(ctx, game) {
+        const tower = game.selectedTower;
+        const next = tower.nextUpgrade();
+
+        ctx.fillStyle = "rgba(27, 27, 34, 0.95)";
+        ctx.fillRect(PANEL.x, PANEL.y, PANEL.w, PANEL.h);
+        ctx.strokeStyle = "#facc15";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(PANEL.x + 1, PANEL.y + 1, PANEL.w - 2, PANEL.h - 2);
+
+        ctx.textBaseline = "middle";
+        ctx.font = "bold 14px monospace";
+        ctx.textAlign = "left";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillText(tower.name, PANEL.x + 14, PANEL.y + 22);
+        ctx.fillStyle = "#facc15";
+        ctx.textAlign = "right";
+        ctx.fillText(`Lv ${tower.level}/${tower.maxLevel}`, PANEL.x + PANEL.w - 14, PANEL.y + 22);
+
+        const rows = [
+            ["Damage", fmt(tower.damage), next ? fmt(next.damage) : null],
+            ["Range", fmt(tower.range), next ? fmt(next.range) : null],
+            ["Speed", `${fmt(1 / tower.attackInterval)}/s`, next ? `${fmt(1 / next.attackInterval)}/s` : null],
+        ];
+        if (tower.splash > 0) {
+            rows.push(["Splash", fmt(tower.splash), next ? fmt(next.splash !== undefined ? next.splash : tower.splash) : null]);
+        }
+        rows.push(["Targeting", capitalize(tower.targetingMode), null]);
+
+        ctx.font = "13px monospace";
+        ctx.textAlign = "left";
+        for (let i = 0; i < rows.length; i++) {
+            const [label, value, nextValue] = rows[i];
+            const y = PANEL.y + 54 + i * 21;
+            const text = `${label}: ${value}`;
+            ctx.fillStyle = "#e5e5ea";
+            ctx.fillText(text, PANEL.x + 14, y);
+            if (nextValue !== null && nextValue !== value) {
+                const w = ctx.measureText(text).width;
+                ctx.fillStyle = "#4ade80";
+                ctx.fillText(` -> ${nextValue}`, PANEL.x + 14 + w, y);
+            }
+        }
+
+        if (next) {
+            this.drawButton(ctx, UPGRADE_BTN, `Upgrade $${next.cost}`, game.state.money >= next.cost);
+        } else {
+            this.drawButton(ctx, UPGRADE_BTN, "MAX LEVEL", false);
+        }
+        this.drawButton(ctx, SELL_BTN, `Sell $${tower.sellValue()}`, true, "#b91c1c", "#f87171");
     }
 
     render(ctx, game) {
@@ -100,8 +175,10 @@ export class HUD {
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
         ctx.fillStyle = "#8b8b99";
-        ctx.fillText("1-3: select tower | L-click: place | R-click: sell", 500, 698);
-        ctx.fillText("Space: wave | P: pause | F: speed | D: debug | V: paths", 500, 711);
+        ctx.fillText("1-3: tower | L-click: place/select | R-click: sell", 500, 698);
+        ctx.fillText("Space wave | P pause | F speed | D debug | V paths | U upgrade", 500, 711);
+
+        if (game.selectedTower && state.status === "playing") this.renderPanel(ctx, game);
 
         if (game.paused && state.status === "playing") {
             ctx.fillStyle = "rgba(0, 0, 0, 0.45)";

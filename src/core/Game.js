@@ -52,6 +52,7 @@ export class Game {
         });
         this.towers = new TowerManager(this.grid, this.pathManager, this.projectiles);
         this.waves = new WaveManager();
+        this.selectedTower = null;
         this.paused = false;
         this.speed = 1;
         this.input.clicks.length = 0;
@@ -83,6 +84,8 @@ export class Game {
             this.runAction("wave");
         } else if (key === "p") this.runAction("pause");
         else if (key === "f") this.runAction("speed");
+        else if (key === "u") this.runAction("upgrade");
+        else if (key === "escape") this.selectedTower = null;
         else if (key === "d") this.showDebug = !this.showDebug;
         else if (key === "v") this.enemies.showPaths = !this.enemies.showPaths;
         else if (key === "r" && this.state.status === "gameover") this.runAction("restart");
@@ -98,7 +101,35 @@ export class Game {
         if (action === "wave") this.waves.start();
         else if (action === "pause") this.paused = !this.paused;
         else if (action === "speed") this.speed = SPEEDS[(SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length];
+        else if (action === "upgrade") this.upgradeSelected();
+        else if (action === "sell") this.sellSelected();
         else if (action.startsWith("tower:")) this.towers.selectedType = action.slice(6);
+    }
+
+    upgradeSelected() {
+        const tower = this.selectedTower;
+        if (!tower) return;
+        const next = tower.nextUpgrade();
+        if (!next || this.state.money < next.cost) return;
+        this.state.spend(next.cost);
+        tower.upgrade();
+    }
+
+    sellSelected() {
+        const tower = this.selectedTower;
+        if (!tower) return;
+        this.sellAt(tower.col, tower.row);
+    }
+
+    sellAt(col, row) {
+        const tower = this.towers.towerAt(col, row);
+        if (!tower) return;
+        if (tower === this.selectedTower) this.selectedTower = null;
+        const refund = this.towers.remove(col, row);
+        if (refund !== null) {
+            this.state.earn(refund);
+            this.enemies.onGridChanged(true);
+        }
     }
 
     handleInput() {
@@ -116,17 +147,20 @@ export class Game {
             const col = this.grid.worldToCol(click.x);
             const row = this.grid.worldToRow(click.y);
             if (click.button === 0) {
-                const tower = this.towers.place(col, row, this.enemies.enemies, this.state.money);
-                if (tower) {
-                    this.state.spend(tower.cost);
-                    this.enemies.onGridChanged(false);
+                const existing = this.towers.towerAt(col, row);
+                if (existing) {
+                    this.selectedTower = existing;
+                } else if (this.grid.inBounds(col, row)) {
+                    this.selectedTower = null;
+                    const tower = this.towers.place(col, row, this.enemies.enemies, this.state.money);
+                    if (tower) {
+                        this.state.spend(tower.cost);
+                        this.enemies.onGridChanged(false);
+                    }
                 }
             } else if (click.button === 2) {
-                const refund = this.towers.remove(col, row);
-                if (refund !== null) {
-                    this.state.earn(refund);
-                    this.enemies.onGridChanged(true);
-                }
+                if (this.hud.overPanel(click.x, click.y, this)) continue;
+                this.sellAt(col, row);
             }
         }
     }
@@ -162,16 +196,26 @@ export class Game {
 
         this.grid.render(ctx);
         this.towers.render(ctx);
+
+        const selected = this.selectedTower;
+        if (selected && this.state.status === "playing") {
+            this.towers.drawRange(ctx, selected.x, selected.y, selected.rangePx);
+            ctx.strokeStyle = "#facc15";
+            ctx.lineWidth = 2;
+            ctx.strokeRect(selected.col * CELL_SIZE + 1, selected.row * CELL_SIZE + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+        }
+
         this.enemies.render(ctx);
         this.projectiles.render(ctx);
 
-        if (this.input.inside && this.state.status === "playing") {
+        const hovering = this.input.inside && this.state.status === "playing" && !this.hud.overPanel(this.input.x, this.input.y, this);
+        if (hovering) {
             const col = this.grid.worldToCol(this.input.x);
             const row = this.grid.worldToRow(this.input.y);
             if (this.grid.inBounds(col, row)) {
                 const tower = this.towers.towerAt(col, row);
                 if (tower) {
-                    this.towers.drawRange(ctx, tower.x, tower.y, tower.rangePx);
+                    if (tower !== selected) this.towers.drawRange(ctx, tower.x, tower.y, tower.rangePx);
                 } else {
                     this.towers.renderPreview(ctx, col, row, this.towers.check(col, row, this.enemies.enemies, this.state.money));
                 }
