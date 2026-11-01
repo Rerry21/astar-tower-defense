@@ -8,6 +8,7 @@ export class TowerManager {
         this.pathManager = pathManager;
         this.projectiles = projectiles;
         this.towers = new Map();
+        this.selectedType = DEFAULT_TOWER;
         this.routeCache = { col: -1, row: -1, version: -1, ok: false };
     }
 
@@ -20,7 +21,7 @@ export class TowerManager {
         return this.towers.get(this.key(col, row)) || null;
     }
 
-    check(col, row, enemies, money, typeName = DEFAULT_TOWER) {
+    check(col, row, enemies, money, typeName = this.selectedType) {
         const grid = this.grid;
         if (!grid.inBounds(col, row)) return "Outside the map";
         if (grid.getType(col, row) !== CellType.WALKABLE) return "Cell is occupied";
@@ -45,9 +46,9 @@ export class TowerManager {
         return cache.ok;
     }
 
-    place(col, row, enemies, money, typeName = DEFAULT_TOWER) {
+    place(col, row, enemies, money, typeName = this.selectedType) {
         if (this.check(col, row, enemies, money, typeName) !== null) return null;
-        const tower = new Tower(col, row, this.grid, TOWER_TYPES[typeName]);
+        const tower = new Tower(col, row, this.grid, TOWER_TYPES[typeName], typeName);
         this.towers.set(this.key(col, row), tower);
         this.grid.setType(col, row, CellType.TOWER);
         return tower;
@@ -85,7 +86,7 @@ export class TowerManager {
         const s = grid.cellSize;
         const ok = reason === null;
 
-        this.drawRange(ctx, grid.cellCenterX(col), grid.cellCenterY(row), TOWER_TYPES[DEFAULT_TOWER].range * s);
+        this.drawRange(ctx, grid.cellCenterX(col), grid.cellCenterY(row), TOWER_TYPES[this.selectedType].range * s);
 
         ctx.fillStyle = ok ? "rgba(74, 222, 128, 0.45)" : "rgba(239, 68, 68, 0.45)";
         ctx.fillRect(col * s, row * s, s, s);

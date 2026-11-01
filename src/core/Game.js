@@ -7,6 +7,7 @@ import { PathManager } from "../pathfinding/PathManager.js";
 import { EnemyManager } from "../enemies/EnemyManager.js";
 import { TowerManager } from "../towers/TowerManager.js";
 import { ProjectileManager } from "../towers/ProjectileManager.js";
+import { TOWER_TYPES } from "../towers/TowerTypes.js";
 import { WaveManager } from "../waves/WaveManager.js";
 import { HUD } from "../ui/HUD.js";
 
@@ -76,6 +77,7 @@ export class Game {
 
     onKey(e) {
         const key = e.key.toLowerCase();
+        const towerKeys = Object.keys(TOWER_TYPES);
         if (e.code === "Space") {
             e.preventDefault();
             this.runAction("wave");
@@ -84,6 +86,7 @@ export class Game {
         else if (key === "d") this.showDebug = !this.showDebug;
         else if (key === "v") this.enemies.showPaths = !this.enemies.showPaths;
         else if (key === "r" && this.state.status === "gameover") this.runAction("restart");
+        else if (key >= "1" && key <= String(towerKeys.length)) this.runAction(`tower:${towerKeys[Number(key) - 1]}`);
     }
 
     runAction(action) {
@@ -95,6 +98,7 @@ export class Game {
         if (action === "wave") this.waves.start();
         else if (action === "pause") this.paused = !this.paused;
         else if (action === "speed") this.speed = SPEEDS[(SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length];
+        else if (action.startsWith("tower:")) this.towers.selectedType = action.slice(6);
     }
 
     handleInput() {
@@ -149,7 +153,7 @@ export class Game {
         if (this.waves.update(dt, this.enemies)) this.state.earn(WAVE_BONUS);
         this.enemies.update(dt);
         this.towers.update(dt, this.enemies.enemies);
-        this.projectiles.update(dt);
+        this.projectiles.update(dt, this.enemies.enemies);
     }
 
     render() {

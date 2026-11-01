@@ -1,7 +1,8 @@
 import { findTarget } from "./Targeting.js";
 
 export class Tower {
-    constructor(col, row, grid, def) {
+    constructor(col, row, grid, def, typeName) {
+        this.typeName = typeName;
         this.col = col;
         this.row = row;
         this.x = grid.cellCenterX(col);
@@ -12,6 +13,10 @@ export class Tower {
         this.rangePx = def.range * grid.cellSize;
         this.damage = def.damage;
         this.attackInterval = def.attackInterval;
+        this.projectileSpeed = def.projectileSpeed;
+        this.projectileColor = def.projectileColor;
+        this.projectileSize = def.projectileSize;
+        this.splashPx = def.splash * grid.cellSize;
         this.cost = def.cost;
         this.invested = def.cost;
         this.sellRatio = def.sellRatio;
@@ -31,7 +36,7 @@ export class Tower {
         const target = findTarget(this, enemies);
         if (!target) return;
 
-        projectiles.add(this.x, this.y, target, this.damage);
+        projectiles.add(this.x, this.y, target, this);
         this.cooldown = this.attackInterval;
     }
 
@@ -45,7 +50,7 @@ export class Tower {
         ctx.strokeRect(this.col * s + inset, this.row * s + inset, s - inset * 2, s - inset * 2);
         ctx.fillStyle = this.outline;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 4, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, this.splashPx > 0 ? 6 : 4, 0, Math.PI * 2);
         ctx.fill();
     }
 }
