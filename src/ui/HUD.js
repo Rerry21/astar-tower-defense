@@ -18,9 +18,10 @@ const TOWER_BUTTONS = Object.keys(TOWER_TYPES).map((type, i) => ({
     h: 26,
 }));
 
-const PANEL = { x: 736, y: 10, w: 214, h: 240 };
-const UPGRADE_BTN = { x: 748, y: 172, w: 190, h: 30 };
-const SELL_BTN = { x: 748, y: 210, w: 190, h: 26 };
+const PANEL = { x: 736, y: 10, w: 214, h: 270 };
+const TARGET_BTN = { x: 748, y: 160, w: 190, h: 28 };
+const UPGRADE_BTN = { x: 748, y: 196, w: 190, h: 30 };
+const SELL_BTN = { x: 748, y: 234, w: 190, h: 26 };
 
 const RESTART = { x: 400, y: 340, w: 160, h: 48 };
 
@@ -41,6 +42,7 @@ export class HUD {
         if (game.state.status === "gameover") return inside(x, y, RESTART) ? "restart" : null;
 
         if (game.selectedTower) {
+            if (inside(x, y, TARGET_BTN)) return "targeting";
             if (inside(x, y, UPGRADE_BTN)) return "upgrade";
             if (inside(x, y, SELL_BTN)) return "sell";
             if (inside(x, y, PANEL)) return "panel";
@@ -120,7 +122,6 @@ export class HUD {
         if (tower.splash > 0) {
             rows.push(["Splash", fmt(tower.splash), next ? fmt(next.splash !== undefined ? next.splash : tower.splash) : null]);
         }
-        rows.push(["Targeting", capitalize(tower.targetingMode), null]);
 
         ctx.font = "13px monospace";
         ctx.textAlign = "left";
@@ -136,6 +137,8 @@ export class HUD {
                 ctx.fillText(` -> ${nextValue}`, PANEL.x + 14 + w, y);
             }
         }
+
+        this.drawButton(ctx, TARGET_BTN, `Target: ${capitalize(tower.targetingMode)}`, true, "#374151", "#9ca3af");
 
         if (next) {
             this.drawButton(ctx, UPGRADE_BTN, `Upgrade $${next.cost}`, game.state.money >= next.cost);
@@ -176,7 +179,7 @@ export class HUD {
         ctx.textBaseline = "middle";
         ctx.fillStyle = "#8b8b99";
         ctx.fillText("1-3: tower | L-click: place/select | R-click: sell", 500, 698);
-        ctx.fillText("Space wave | P pause | F speed | D debug | V paths | U upgrade", 500, 711);
+        ctx.fillText("Space wave | P pause | F speed | D debug | V paths | U upgrade | T target", 500, 711);
 
         if (game.selectedTower && state.status === "playing") this.renderPanel(ctx, game);
 

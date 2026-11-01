@@ -4,16 +4,21 @@ export class ProjectileManager {
     constructor() {
         this.items = [];
         this.effects = [];
+        this.fired = 0;
+        this.hits = 0;
     }
 
     add(x, y, target, tower) {
         this.items.push(new Projectile(x, y, target, tower));
+        this.fired++;
     }
 
     update(dt, enemies) {
         const items = this.items;
         for (let i = items.length - 1; i >= 0; i--) {
-            if (items[i].update(dt, enemies, this.effects)) {
+            const projectile = items[i];
+            if (projectile.update(dt, enemies, this.effects)) {
+                if (projectile.landed) this.hits++;
                 items[i] = items[items.length - 1];
                 items.pop();
             }
@@ -41,6 +46,13 @@ export class ProjectileManager {
             ctx.fill();
             ctx.stroke();
         }
+
         for (let i = 0; i < this.items.length; i++) this.items[i].render(ctx);
+
+        ctx.fillStyle = "#e5e5ea";
+        ctx.font = "14px monospace";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        ctx.fillText(`Shots: ${this.fired} | Hits: ${this.hits}`, 10, 82);
     }
 }

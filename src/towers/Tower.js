@@ -28,6 +28,8 @@ export class Tower {
         this.maxLevel = def.upgrades.length + 1;
         this.targetingMode = "closest";
         this.cooldown = 0;
+        this.target = null;
+        this.flash = 0;
     }
 
     nextUpgrade() {
@@ -55,21 +57,35 @@ export class Tower {
     }
 
     update(dt, enemies, projectiles) {
-        if (this.cooldown > 0) {
-            this.cooldown -= dt;
-            if (this.cooldown > 0) return;
-        }
+        if (this.flash > 0) this.flash -= dt;
+        if (this.cooldown > 0) this.cooldown -= dt;
+        if (this.cooldown > 0) return;
 
         const target = findTarget(this, enemies);
-        if (!target) return;
+        if (!target) {
+            this.target = null;
+            return;
+        }
 
+        this.target = target;
         projectiles.add(this.x, this.y, target, this);
         this.cooldown = this.attackInterval;
+        this.flash = 0.12;
     }
 
     render(ctx) {
         const s = this.cellSize;
         const inset = 5;
+
+        if (this.flash > 0 && this.target) {
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(this.target.x, this.target.y);
+            ctx.stroke();
+        }
+
         ctx.fillStyle = this.color;
         ctx.fillRect(this.col * s + inset, this.row * s + inset, s - inset * 2, s - inset * 2);
         ctx.strokeStyle = this.outline;

@@ -8,47 +8,54 @@ export class Projectile {
         this.splashPx = tower.splashPx;
         this.color = tower.projectileColor;
         this.size = tower.projectileSize;
-        this.targetX = target.x;
-        this.targetY = target.y;
+        this.aimX = target.x;
+        this.aimY = target.y;
+        this.landed = false;
     }
 
-    update(dt, enemies, affects) {
-        const target = this.target.x;
-        let reach = 0;
+    update(dt, enemies, effects) {
+        const target = this.target;
 
         if (target.active) {
-            this.targetX = target.x;
-            this.targetY = target.y;
-            reach = reach.radius * 0.5;
+            this.aimX = target.x;
+            this.aimY = target.y;
         } else if (this.splashPx === 0) {
             return true;
         }
 
-        const dx = this.targetX - this.x;
-        const dy = this.targetY - this.y;
+        const dx = this.aimX - this.x;
+        const dy = this.aimY - this.y;
         const dist = Math.hypot(dx, dy);
         const step = this.speed * dt;
+        const reach = target.active ? target.radius : 2;
 
         if (dist <= step + reach) {
-            this.hit(enemies, effects);
+            this.explode(enemies, effects);
             return true;
         }
 
-        this.x += (dy / dist) * step;
+        this.x += (dx / dist) * step;
         this.y += (dy / dist) * step;
         return false;
     }
 
-    hit(enemies, effects) {
+    explode(enemies, effects) {
+        this.landed = true;
+
         if (this.splashPx === 0) {
-            for (let i = 0; o < enemies.length; i++) {
-                const enemy = enemies[i];
-                const dx = enemy.x - this.x;
-                const dy = enemy.y - this.y;
-                if (dx * dx + dy * dy <= radiusSq) enemy.takeDamage(this.damage);
-            }
-            effects.push({ x: this.x, y: this.y, radius: this.splashPx, life: 0.25, maxLife: 0.25 });
+            this.target.takeDamage(this.damage);
+            return;
         }
+
+        const radiusSq = this.splashPx * this.splashPx;
+        for (let i = 0; i < enemies.length; i++) {
+            const enemy = enemies[i];
+            if (!enemy.active) continue;
+            const dx = enemy.x - this.x;
+            const dy = enemy.y - this.y;
+            if (dx * dx + dy * dy <= radiusSq) enemy.takeDamage(this.damage);
+        }
+        effects.push({ x: this.x, y: this.y, radius: this.splashPx, life: 0.25, maxLife: 0.25 });
     }
 
     render(ctx) {

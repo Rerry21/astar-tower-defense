@@ -7,6 +7,7 @@ import { PathManager } from "../pathfinding/PathManager.js";
 import { EnemyManager } from "../enemies/EnemyManager.js";
 import { TowerManager } from "../towers/TowerManager.js";
 import { ProjectileManager } from "../towers/ProjectileManager.js";
+import { nextTargetingMode } from "../towers/Targeting.js";
 import { TOWER_TYPES } from "../towers/TowerTypes.js";
 import { WaveManager } from "../waves/WaveManager.js";
 import { HUD } from "../ui/HUD.js";
@@ -85,6 +86,7 @@ export class Game {
         } else if (key === "p") this.runAction("pause");
         else if (key === "f") this.runAction("speed");
         else if (key === "u") this.runAction("upgrade");
+        else if (key === "t") this.runAction("targeting");
         else if (key === "escape") this.selectedTower = null;
         else if (key === "d") this.showDebug = !this.showDebug;
         else if (key === "v") this.enemies.showPaths = !this.enemies.showPaths;
@@ -103,7 +105,14 @@ export class Game {
         else if (action === "speed") this.speed = SPEEDS[(SPEEDS.indexOf(this.speed) + 1) % SPEEDS.length];
         else if (action === "upgrade") this.upgradeSelected();
         else if (action === "sell") this.sellSelected();
+        else if (action === "targeting") this.cycleTargeting();
         else if (action.startsWith("tower:")) this.towers.selectedType = action.slice(6);
+    }
+
+    cycleTargeting() {
+        const tower = this.selectedTower;
+        if (!tower) return;
+        tower.targetingMode = nextTargetingMode(tower.targetingMode);
     }
 
     upgradeSelected() {
