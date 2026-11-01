@@ -18,16 +18,15 @@ export class ProjectileManager {
         for (let i = items.length - 1; i >= 0; i--) {
             const projectile = items[i];
             if (projectile.update(dt, enemies, this.effects)) {
-                if (projectile.landed) this.hits++;
                 items[i] = items[items.length - 1];
                 items.pop();
             }
         }
 
         const effects = this.effects;
-        for (let i = effects.length - 1; i >= 0; i--) {
+        for (let i = effects.length -1; i >= 0; i--) {
             effects[i].life -= dt;
-            if (effects[i].life <= 0) {
+            if (effects[i].life <= 0){
                 effects[i] = effects[effects.length - 1];
                 effects.pop();
             }
@@ -48,11 +47,5 @@ export class ProjectileManager {
         }
 
         for (let i = 0; i < this.items.length; i++) this.items[i].render(ctx);
-
-        ctx.fillStyle = "#e5e5ea";
-        ctx.font = "14px monospace";
-        ctx.textAlign = "left";
-        ctx.textBaseline = "top";
-        ctx.fillText(`Shots: ${this.fired} | Hits: ${this.hits}`, 10, 82);
     }
 }

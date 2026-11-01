@@ -11,6 +11,7 @@ import { nextTargetingMode } from "../towers/Targeting.js";
 import { TOWER_TYPES } from "../towers/TowerTypes.js";
 import { WaveManager } from "../waves/WaveManager.js";
 import { HUD } from "../ui/HUD.js";
+import { FloatingText } from "../ui/FloatingText.js";
 
 const CELL_SIZE = 32;
 const START_MONEY = 250;
@@ -47,13 +48,21 @@ export class Game {
         this.astar = new AStar(this.grid);
         this.pathManager = new PathManager(this.grid);
         this.projectiles = new ProjectileManager();
+        this.floaters = new FloatingText();
         this.enemies = new EnemyManager(this.grid, this.astar, {
-            onKill: (enemy) => this.state.earn(enemy.reward),
-            onLeak: (enemy) => this.state.loseLives(enemy.damage),
+            onKill: (enemy) => {
+                this.state.earn(enemy.reward);
+                this.floaters.add(enemy.x, enemy.y - enemy.radius - 8, `+$${enemy.reward}`, "#facc15");
+            },
+            onLeak: (enemy) => {
+                this.state.loseLives(enemy.damage);
+                this.floaters.add(enemy.x - 20, enemy.y - enemy.radius - 8, `-${enemy.damage}`, "#f87171");
+            },
         });
         this.towers = new TowerManager(this.grid, this.pathManager, this.projectiles);
         this.waves = new WaveManager();
         this.selectedTower = null;
+        this.banner = null;
         this.paused = false;
         this.speed = 1;
         this.input.clicks.length = 0;
@@ -186,6 +195,12 @@ export class Game {
         this.handleInput();
 
         if (this.paused) return;
+
+        if (this.banner) {
+            this.banner.life -= dt;
+            if (this.banner.life <= 0) this.banner = null;
+        }
+
         for (let i = 0; i < this.speed; i++) {
             if (this.state.status !== "playing") break;
             this.step(dt);
@@ -193,10 +208,14 @@ export class Game {
     }
 
     step(dt) {
-        if (this.waves.update(dt, this.enemies)) this.state.earn(WAVE_BONUS);
+        if (this.waves.update(dt, this.enemies)) {
+            this.state.earn(WAVE_BONUS);
+            this.banner = { text: `Wave ${this.waves.wave} cleared!  +$${WAVE_BONUS}`, life: 2.5 };
+        }
         this.enemies.update(dt);
         this.towers.update(dt, this.enemies.enemies);
         this.projectiles.update(dt, this.enemies.enemies);
+        this.floaters.update(dt);
     }
 
     render() {
@@ -216,6 +235,7 @@ export class Game {
 
         this.enemies.render(ctx);
         this.projectiles.render(ctx);
+        this.floaters.render(ctx);
 
         const hovering = this.input.inside && this.state.status === "playing" && !this.hud.overPanel(this.input.x, this.input.y, this);
         if (hovering) {
@@ -255,5 +275,6 @@ export class Game {
             46
         );
         ctx.fillText(`Repaths: last change ${this.enemies.lastRepaths} | total ${this.enemies.totalRepaths}`, 10, 64);
+        ctx.fillText(`Shots: ${this.projectiles.fired} | Hits: ${this.projectiles.hits}`, 10, 82);
     }
 }

@@ -1,4 +1,5 @@
 import { TOWER_TYPES } from "../towers/TowerTypes.js";
+import { getWave } from "../waves/waveConfig.js";
 
 const BAR_Y = 640;
 const BAR_H = 80;
@@ -148,6 +149,82 @@ export class HUD {
         this.drawButton(ctx, SELL_BTN, `Sell $${tower.sellValue()}`, true, "#b91c1c", "#f87171");
     }
 
+    renderNextWave(ctx, game) {
+        const { waves, state } = game;
+        if (!waves.canStart() || state.status !== "playing") return;
+
+        const groups = getWave(waves.wave + 1).groups.filter((group) => group[1] > 0);
+        const text = `Next wave ${waves.wave + 1}: ${groups.map((group) => `${group[1]} ${group[0]}`).join(", ")}`;
+
+        ctx.font = "bold 14px monospace";
+        const w = ctx.measureText(text).width + 28;
+        const x = (game.width - w) / 2;
+        const y = BAR_Y - 36;
+
+        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+        ctx.fillRect(x, y, w, 26);
+        ctx.fillStyle = "#e5e5ea";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, game.width / 2, y + 13);
+    }
+
+    renderBanner(ctx, game) {
+        const banner = game.banner;
+        if (!banner || game.state.status !== "playing") return;
+
+        ctx.globalAlpha = Math.min(1, banner.life / 0.6);
+        ctx.font = "bold 28px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = "#000000";
+        ctx.strokeText(banner.text, game.width / 2, 130);
+        ctx.fillStyle = "#4ade80";
+        ctx.fillText(banner.text, game.width / 2, 130);
+        ctx.globalAlpha = 1;
+    }
+
+    renderTooltip(ctx, game) {
+        const input = game.input;
+        if (!input.inside || game.state.status !== "playing") return;
+
+        let rect = null;
+        for (let i = 0; i < TOWER_BUTTONS.length; i++) {
+            if (inside(input.x, input.y, TOWER_BUTTONS[i])) rect = TOWER_BUTTONS[i];
+        }
+        if (!rect) return;
+
+        const def = TOWER_TYPES[rect.type];
+        const lines = [
+            [def.name, "#ffffff"],
+            [`Cost: $${def.cost}`, "#facc15"],
+            [`Damage: ${fmt(def.damage)}`, "#e5e5ea"],
+            [`Range: ${fmt(def.range)}`, "#e5e5ea"],
+            [`Speed: ${fmt(1 / def.attackInterval)}/s`, "#e5e5ea"],
+        ];
+        if (def.splash > 0) lines.push([`Splash: ${fmt(def.splash)}`, "#e5e5ea"]);
+
+        const w = 170;
+        const h = 16 + lines.length * 18;
+        const x = rect.x;
+        const y = rect.y - h - 6;
+
+        ctx.fillStyle = "rgba(27, 27, 34, 0.96)";
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = def.color;
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+
+        ctx.font = "bold 13px monospace";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        for (let i = 0; i < lines.length; i++) {
+            ctx.fillStyle = lines[i][1];
+            ctx.fillText(lines[i][0], x + 12, y + 17 + i * 18);
+        }
+    }
+
     render(ctx, game) {
         const { state, waves, enemies } = game;
 
@@ -182,6 +259,8 @@ export class HUD {
         ctx.fillText("Space wave | P pause | F speed | D debug | V paths | U upgrade | T target", 500, 711);
 
         if (game.selectedTower && state.status === "playing") this.renderPanel(ctx, game);
+        this.renderNextWave(ctx, game);
+        this.renderBanner(ctx, game);
 
         if (game.paused && state.status === "playing") {
             ctx.fillStyle = "rgba(0, 0, 0, 0.45)";
@@ -191,6 +270,8 @@ export class HUD {
             ctx.textAlign = "center";
             ctx.fillText("PAUSED", game.width / 2, BAR_Y / 2);
         }
+
+        this.renderTooltip(ctx, game);
 
         if (state.status === "gameover") {
             ctx.fillStyle = "rgba(0, 0, 0, 0.72)";
