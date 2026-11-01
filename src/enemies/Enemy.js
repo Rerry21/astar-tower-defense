@@ -78,7 +78,7 @@ export class Enemy {
         ctx.stroke();
 
         if (this.health < this.maxHealth) {
-            const w = 24;
+            const w = this.radius * 2 + 6;
             const h = 4;
             const x = this.x - w / 2;
             const y = this.y - this.radius - 9;

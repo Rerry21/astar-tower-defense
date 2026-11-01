@@ -5,7 +5,8 @@ export class WaveManager {
         this.wave = 0;
         this.phase = "idle";
         this.config = null;
-        this.remainingToSpawn = 0;
+        this.queue = [];
+        this.nextIndex = 0;
         this.timer = 0;
     }
 
@@ -17,26 +18,30 @@ export class WaveManager {
         if (!this.canStart()) return false;
         this.wave++;
         this.config = getWave(this.wave);
-        this.remainingToSpawn = this.config.count;
+        this.queue = [];
+        for (const [type, count] of this.config.groups) {
+            for (let i = 0; i < count; i++) this.queue.push(type);
+        }
+        this.nextIndex = 0;
         this.timer = 0;
-        this.phase = "spawning";
+        this.phase = this.queue.length > 0 ? "spawning" : "clearing";
         return true;
     }
 
     enemiesLeft(enemyManager) {
-        return this.remainingToSpawn + enemyManager.enemies.length;
+        return this.queue.length - this.nextIndex + enemyManager.enemies.length;
     }
 
     update(dt, enemyManager) {
         if (this.phase === "spawning") {
             const cfg = this.config;
             this.timer -= dt;
-            while (this.timer <= 0 && this.remainingToSpawn > 0) {
-                enemyManager.spawn(cfg.type, cfg.healthMult, cfg.speedMult, cfg.rewardMult);
-                this.remainingToSpawn--;
+            while (this.timer <= 0 && this.nextIndex < this.queue.length) {
+                enemyManager.spawn(this.queue[this.nextIndex], cfg.healthMult, cfg.speedMult, cfg.rewardMult);
+                this.nextIndex++;
                 this.timer += cfg.interval;
             }
-            if (this.remainingToSpawn === 0) this.phase = "clearing";
+            if (this.nextIndex >= this.queue.length) this.phase = "clearing";
             return false;
         }
 
