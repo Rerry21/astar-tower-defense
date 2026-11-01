@@ -3,6 +3,7 @@ import { GameState } from "./GameState.js";
 import { Input } from "./Input.js";
 import { level1 } from "./maps.js";
 import { AStar } from "../pathfinding/AStar.js";
+import { AStarVisualizer } from "../pathfinding/AStarVisualizer.js";
 import { PathManager } from "../pathfinding/PathManager.js";
 import { EnemyManager } from "../enemies/EnemyManager.js";
 import { TowerManager } from "../towers/TowerManager.js";
@@ -46,6 +47,7 @@ export class Game {
         this.grid = new Grid(level1, CELL_SIZE);
         this.state = new GameState(START_MONEY, START_LIVES);
         this.astar = new AStar(this.grid);
+        this.visualizer = new AStarVisualizer(this.grid);
         this.pathManager = new PathManager(this.grid);
         this.projectiles = new ProjectileManager();
         this.floaters = new FloatingText();
@@ -96,6 +98,11 @@ export class Game {
         else if (key === "f") this.runAction("speed");
         else if (key === "u") this.runAction("upgrade");
         else if (key === "t") this.runAction("targeting");
+        else if (key === "a") this.visualizer.toggle();
+        else if (key === "s") this.visualizer.togglePause();
+        else if (key === "arrowright") this.visualizer.stepOnce();
+        else if (key === "[") this.visualizer.slower();
+        else if (key === "]") this.visualizer.faster();
         else if (key === "escape") this.selectedTower = null;
         else if (key === "d") this.showDebug = !this.showDebug;
         else if (key === "v") this.enemies.showPaths = !this.enemies.showPaths;
@@ -193,6 +200,7 @@ export class Game {
         }
 
         this.handleInput();
+        this.visualizer.update(dt);
 
         if (this.paused) return;
 
@@ -223,6 +231,7 @@ export class Game {
         ctx.clearRect(0, 0, this.width, this.height);
 
         this.grid.render(ctx);
+        this.visualizer.render(ctx);
         this.towers.render(ctx);
 
         const selected = this.selectedTower;
@@ -252,6 +261,7 @@ export class Game {
         }
 
         if (this.showDebug) this.renderDebug(ctx);
+        this.visualizer.renderPanel(ctx);
         this.hud.render(ctx, this);
     }
 
