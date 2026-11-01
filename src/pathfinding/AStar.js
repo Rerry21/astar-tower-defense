@@ -15,6 +15,7 @@ export class AStar {
         }
         this.open = new MinHeap();
         this.searchId = 0;
+        this.trace = null;
         this.lastStats = { found: false, pathLength: 0, nodesExpanded: 0, timeMs: 0 };
     }
 
@@ -61,6 +62,7 @@ export class AStar {
         this.open.clear();
 
         const grid = this.grid;
+        const trace = this.trace;
         const goal = this.touch(this.nodeAt(goalCol, goalRow));
         const start = this.touch(this.nodeAt(startCol, startRow));
 
@@ -69,12 +71,14 @@ export class AStar {
         start.f = start.h;
         start.open = true;
         this.open.push(start);
+        if (trace) trace.push((startRow * grid.cols + startCol) << 1);
 
         while (this.open.size > 0) {
             const current = this.open.pop();
             current.open = false;
             current.closed = true;
             this.lastStats.nodesExpanded++;
+            if (trace) trace.push(((current.row * grid.cols + current.col) << 1) | 1);
 
             if (current === goal) return this.reconstructPath(current);
 
@@ -98,6 +102,7 @@ export class AStar {
                         neighbor.open = true;
                         this.open.push(neighbor);
                     }
+                    if (trace) trace.push((row * grid.cols + col) << 1);
                 }
             }
         }
