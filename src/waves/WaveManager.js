@@ -1,7 +1,8 @@
 import { getWave } from "./waveConfig.js";
 
 export class WaveManager {
-    constructor() {
+    constructor(difficulty) {
+        this.difficulty = difficulty;
         this.wave = 0;
         this.phase = "idle";
         this.config = null;
@@ -35,9 +36,11 @@ export class WaveManager {
     update(dt, enemyManager) {
         if (this.phase === "spawning") {
             const cfg = this.config;
+            const health = cfg.healthMult * this.difficulty.enemyHealth;
+            const reward = cfg.rewardMult * this.difficulty.reward;
             this.timer -= dt;
             while (this.timer <= 0 && this.nextIndex < this.queue.length) {
-                enemyManager.spawn(this.queue[this.nextIndex], cfg.healthMult, cfg.speedMult, cfg.rewardMult);
+                enemyManager.spawn(this.queue[this.nextIndex], health, cfg.speedMult, reward);
                 this.nextIndex++;
                 this.timer += cfg.interval;
             }

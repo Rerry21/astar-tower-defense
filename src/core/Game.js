@@ -2,6 +2,7 @@ import { Grid } from "./Grid.js";
 import { GameState } from "./GameState.js";
 import { Input } from "./Input.js";
 import { level1 } from "./maps.js";
+import { DIFFICULTIES, DIFFICULTY_ORDER } from "./difficulty.js";
 import { AStar } from "../pathfinding/AStar.js";
 import { AStarVisualizer } from "../pathfinding/AStarVisualizer.js";
 import { PathManager } from "../pathfinding/PathManager.js";
@@ -15,9 +16,6 @@ import { HUD } from "../ui/HUD.js";
 import { FloatingText } from "../ui/FloatingText.js";
 
 const CELL_SIZE = 32;
-const START_MONEY = 250;
-const START_LIVES = 20;
-const WAVE_BONUS = 25;
 const SPEEDS = [1, 2, 3];
 
 export class Game {
@@ -37,6 +35,7 @@ export class Game {
         this.input = new Input(canvas);
         this.hud = new HUD();
         this.showDebug = true;
+        this.difficultyKey = "normal";
 
         window.addEventListener("keydown", (e) => this.onKey(e));
 
@@ -44,8 +43,9 @@ export class Game {
     }
 
     reset() {
+        this.difficulty = DIFFICULTIES[this.difficultyKey];
         this.grid = new Grid(level1, CELL_SIZE);
-        this.state = new GameState(START_MONEY, START_LIVES);
+        this.state = new GameState(this.difficulty.startMoney, this.difficulty.startLives);
         this.astar = new AStar(this.grid);
         this.visualizer = new AStarVisualizer(this.grid);
         this.pathManager = new PathManager(this.grid);
@@ -62,7 +62,7 @@ export class Game {
             },
         });
         this.towers = new TowerManager(this.grid, this.pathManager, this.projectiles);
-        this.waves = new WaveManager();
+        this.waves = new WaveManager(this.difficulty);
         this.selectedTower = null;
         this.banner = null;
         this.paused = false;
@@ -98,6 +98,7 @@ export class Game {
         else if (key === "f") this.runAction("speed");
         else if (key === "u") this.runAction("upgrade");
         else if (key === "t") this.runAction("targeting");
+        else if (key === "m") this.cycleDifficulty();
         else if (key === "a") this.visualizer.toggle();
         else if (key === "s") this.visualizer.togglePause();
         else if (key === "arrowright") this.visualizer.stepOnce();
@@ -123,6 +124,14 @@ export class Game {
         else if (action === "sell") this.sellSelected();
         else if (action === "targeting") this.cycleTargeting();
         else if (action.startsWith("tower:")) this.towers.selectedType = action.slice(6);
+    }
+
+    cycleDifficulty() {
+        const gameOver = this.state.status === "gameover";
+        if (this.waves.wave > 0 && !gameOver) return;
+        const index = DIFFICULTY_ORDER.indexOf(this.difficultyKey);
+        this.difficultyKey = DIFFICULTY_ORDER[(index + 1) % DIFFICULTY_ORDER.length];
+        this.reset();
     }
 
     cycleTargeting() {
@@ -217,8 +226,9 @@ export class Game {
 
     step(dt) {
         if (this.waves.update(dt, this.enemies)) {
-            this.state.earn(WAVE_BONUS);
-            this.banner = { text: `Wave ${this.waves.wave} cleared!  +$${WAVE_BONUS}`, life: 2.5 };
+            const bonus = this.difficulty.waveBonus;
+            this.state.earn(bonus);
+            this.banner = { text: `Wave ${this.waves.wave} cleared!  +$${bonus}`, life: 2.5 };
         }
         this.enemies.update(dt);
         this.towers.update(dt, this.enemies.enemies);
@@ -263,6 +273,24 @@ export class Game {
         if (this.showDebug) this.renderDebug(ctx);
         this.visualizer.renderPanel(ctx);
         this.hud.render(ctx, this);
+        this.renderDifficulty(ctx);
+    }
+
+    renderDifficulty(ctx) {
+        if (this.waves.wave !== 0 || this.state.status !== "playing") return;
+
+        const text = `Difficulty: ${this.difficulty.label}  (M to change, restarts)`;
+        ctx.font = "bold 14px monospace";
+        const w = ctx.measureText(text).width + 28;
+        const x = (this.width - w) / 2;
+        const y = 570;
+
+        ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+        ctx.fillRect(x, y, w, 26);
+        ctx.fillStyle = "#facc15";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, this.width / 2, y + 13);
     }
 
     renderDebug(ctx) {

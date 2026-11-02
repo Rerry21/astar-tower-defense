@@ -14,8 +14,8 @@ export const TOWER_TYPES = {
         color: "#60a5fa",
         outline: "#1e3a8a",
         upgrades: [
-            { cost: 60, damage: 32, range: 4.5, attackInterval: 0.52 },
-            { cost: 110, damage: 50, range: 5, attackInterval: 0.42 },
+            { cost: 70, damage: 30, range: 4.5, attackInterval: 0.55},
+            { cost: 130, damage: 44, range: 5, attackInterval: 0.48 },
         ],
     },
     bomb: {
@@ -34,7 +34,7 @@ export const TOWER_TYPES = {
         outline: "#7c2d12",
         upgrades: [
             { cost: 100, damage: 55, range: 3.75, attackInterval: 1.25, splash: 1.8 },
-            { cost: 180, damage: 85, range: 4, attackInterval: 1.1, splash: 2 },
+            { cost: 180, damage: 85, range: 4, attackInterval: 1.1, splash: 2},
         ],
     },
     sniper: {
@@ -42,8 +42,8 @@ export const TOWER_TYPES = {
         name: "Sniper Tower",
         cost: 150,
         range: 8,
-        damage: 90,
-        attackInterval: 1.8,
+        damage: 110,
+        attackInterval: 1.6,
         projectileSpeed: 700,
         projectileColor: "#e879f9",
         projectileSize: 3,
@@ -52,8 +52,8 @@ export const TOWER_TYPES = {
         color: "#a78bfa",
         outline: "#4c1d95",
         upgrades: [
-            { cost: 120, damage: 150, range: 9, attackInterval: 1.6 },
-            { cost: 220, damage: 240, range: 10, attackInterval: 1.35 },
+            { cost: 120, damage: 170, range: 9, attackInterval: 1.45 },
+            { cost: 220, damage: 260, range: 10, attackInterval: 1.2 },
         ],
     },
 };
