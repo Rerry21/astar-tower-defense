@@ -39,6 +39,12 @@ function capitalize(text) {
 }
 
 export class HUD {
+    constructor() {
+        this.previewWave = -1;
+        this.previewText = "";
+        this.previewWidth = 0;
+    }
+
     hitTest(x, y, game) {
         if (game.state.status === "gameover") return inside(x, y, RESTART) ? "restart" : null;
 
@@ -153,20 +159,24 @@ export class HUD {
         const { waves, state } = game;
         if (!waves.canStart() || state.status !== "playing") return;
 
-        const groups = getWave(waves.wave + 1).groups.filter((group) => group[1] > 0);
-        const text = `Next wave ${waves.wave + 1}: ${groups.map((group) => `${group[1]} ${group[0]}`).join(", ")}`;
-
+        const next = waves.wave + 1;
         ctx.font = "bold 14px monospace";
-        const w = ctx.measureText(text).width + 28;
-        const x = (game.width - w) / 2;
+        if (this.previewWave !== next) {
+            const groups = getWave(next).groups.filter((group) => group[1] > 0);
+            this.previewText = `Next wave ${next}: ${groups.map((group) => `${group[1]} ${group[0]}`).join(", ")}`;
+            this.previewWidth = ctx.measureText(this.previewText).width + 28;
+            this.previewWave = next;
+        }
+
+        const x = (game.width - this.previewWidth) / 2;
         const y = BAR_Y - 36;
 
         ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-        ctx.fillRect(x, y, w, 26);
+        ctx.fillRect(x, y, this.previewWidth, 26);
         ctx.fillStyle = "#e5e5ea";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(text, game.width / 2, y + 13);
+        ctx.fillText(this.previewText, game.width / 2, y + 13);
     }
 
     renderBanner(ctx, game) {

@@ -1,11 +1,13 @@
 import { Enemy } from "./Enemy.js";
 import { ENEMY_TYPES } from "./EnemyTypes.js";
+import { PathCache } from "../pathfinding/PathCache.js";
 import { drawPath } from "../pathfinding/PathRenderer.js";
 
 export class EnemyManager {
     constructor(grid, astar, callbacks) {
         this.grid = grid;
         this.astar = astar;
+        this.paths = new PathCache(grid, astar);
         this.onKill = callbacks.onKill;
         this.onLeak = callbacks.onLeak;
         this.enemies = [];
@@ -15,8 +17,8 @@ export class EnemyManager {
     }
 
     spawn(typeName, healthMult = 1, speedMult = 1, rewardMult = 1) {
-        const { spawn, goal } = this.grid;
-        const path = this.astar.findPath(spawn.col, spawn.row, goal.col, goal.row);
+        const spawn = this.grid.spawn;
+        const path = this.paths.get(spawn.col, spawn.row);
         if (!path) return null;
 
         const enemy = new Enemy(
@@ -46,7 +48,7 @@ export class EnemyManager {
             row = grid.worldToRow(enemy.y);
         }
 
-        const path = this.astar.findPath(col, row, grid.goal.col, grid.goal.row);
+        const path = this.paths.get(col, row);
         if (!path) return false;
         enemy.setPath(path);
         return true;

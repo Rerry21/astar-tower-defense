@@ -17,6 +17,11 @@ export class Grid {
         this.spawn = null;
         this.goal = null;
         this.version = 0;
+        this.layer = document.createElement("canvas");
+        this.layer.width = this.cols * cellSize;
+        this.layer.height = this.rows * cellSize;
+        this.layerCtx = this.layer.getContext("2d");
+        this.layerVersion = -1;
         this.load(layout);
     }
 
@@ -80,6 +85,12 @@ export class Grid {
     }
 
     render(ctx) {
+        if (this.layerVersion !== this.version) this.drawLayer();
+        ctx.drawImage(this.layer, 0, 0);
+    }
+
+    drawLayer() {
+        const ctx = this.layerCtx;
         const s = this.cellSize;
         const w = this.cols * s;
         const h = this.rows * s;
@@ -110,5 +121,7 @@ export class Grid {
         ctx.textBaseline = "middle";
         ctx.fillText("A", this.cellCenterX(this.spawn.col), this.cellCenterY(this.spawn.row));
         ctx.fillText("B", this.cellCenterX(this.goal.col), this.cellCenterY(this.goal.row));
+
+        this.layerVersion = this.version;
     }
 }

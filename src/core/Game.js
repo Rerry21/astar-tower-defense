@@ -17,6 +17,7 @@ import { FloatingText } from "../ui/FloatingText.js";
 
 const CELL_SIZE = 32;
 const SPEEDS = [1, 2, 3];
+const STRESS_COUNT = 50;
 
 export class Game {
     constructor(canvas) {
@@ -31,6 +32,8 @@ export class Game {
         this.fps = 0;
         this.fpsFrames = 0;
         this.fpsTimer = 0;
+        this.updateMs = 0;
+        this.renderMs = 0;
 
         this.input = new Input(canvas);
         this.hud = new HUD();
@@ -82,8 +85,14 @@ export class Game {
         const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
         this.lastTime = timestamp;
 
+        const t0 = performance.now();
         this.update(dt);
+        const t1 = performance.now();
         this.render();
+        const t2 = performance.now();
+
+        this.updateMs += (t1 - t0 - this.updateMs) * 0.1;
+        this.renderMs += (t2 - t1 - this.renderMs) * 0.1;
 
         requestAnimationFrame((t) => this.loop(t));
     }
@@ -99,6 +108,7 @@ export class Game {
         else if (key === "u") this.runAction("upgrade");
         else if (key === "t") this.runAction("targeting");
         else if (key === "m") this.cycleDifficulty();
+        else if (key === "k") this.stressTest();
         else if (key === "a") this.visualizer.toggle();
         else if (key === "s") this.visualizer.togglePause();
         else if (key === "arrowright") this.visualizer.stepOnce();
@@ -124,6 +134,11 @@ export class Game {
         else if (action === "sell") this.sellSelected();
         else if (action === "targeting") this.cycleTargeting();
         else if (action.startsWith("tower:")) this.towers.selectedType = action.slice(6);
+    }
+
+    stressTest() {
+        if (!this.showDebug || this.state.status !== "playing") return;
+        for (let i = 0; i < STRESS_COUNT; i++) this.enemies.spawn("basic");
     }
 
     cycleDifficulty() {
@@ -296,12 +311,13 @@ export class Game {
     renderDebug(ctx) {
         const enemyStats = this.astar.lastStats;
         const checkStats = this.pathManager.checker.lastStats;
+        const cache = this.enemies.paths;
 
         ctx.fillStyle = "#e5e5ea";
         ctx.font = "14px monospace";
         ctx.textAlign = "left";
         ctx.textBaseline = "top";
-        ctx.fillText(`FPS: ${this.fps}`, 10, 10);
+        ctx.fillText(`FPS: ${this.fps} | update ${this.updateMs.toFixed(2)}ms | render ${this.renderMs.toFixed(2)}ms`, 10, 10);
         ctx.fillText(
             `Enemy A*: path ${enemyStats.pathLength} | expanded ${enemyStats.nodesExpanded} | ${enemyStats.timeMs.toFixed(2)}ms`,
             10,
@@ -313,6 +329,8 @@ export class Game {
             46
         );
         ctx.fillText(`Repaths: last change ${this.enemies.lastRepaths} | total ${this.enemies.totalRepaths}`, 10, 64);
-        ctx.fillText(`Shots: ${this.projectiles.fired} | Hits: ${this.projectiles.hits}`, 10, 82);
+        ctx.fillText(`Path cache: ${cache.hits} hits / ${cache.misses} A* runs`, 10, 82);
+        ctx.fillText(`Shots: ${this.projectiles.fired} | Hits: ${this.projectiles.hits}`, 10, 100);
+        ctx.fillText(`Enemies: ${this.enemies.enemies.length} | Projectiles: ${this.projectiles.items.length}`, 10, 118);
     }
 }
