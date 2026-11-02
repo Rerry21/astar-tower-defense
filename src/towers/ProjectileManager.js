@@ -4,29 +4,25 @@ export class ProjectileManager {
     constructor() {
         this.items = [];
         this.effects = [];
-        this.fired = 0;
-        this.hits = 0;
     }
 
     add(x, y, target, tower) {
         this.items.push(new Projectile(x, y, target, tower));
-        this.fired++;
     }
 
     update(dt, enemies) {
         const items = this.items;
         for (let i = items.length - 1; i >= 0; i--) {
-            const projectile = items[i];
-            if (projectile.update(dt, enemies, this.effects)) {
+            if (items[i].update(dt, enemies, this.effects)) {
                 items[i] = items[items.length - 1];
                 items.pop();
             }
         }
 
         const effects = this.effects;
-        for (let i = effects.length -1; i >= 0; i--) {
+        for (let i = effects.length - 1; i >= 0; i--) {
             effects[i].life -= dt;
-            if (effects[i].life <= 0){
+            if (effects[i].life <= 0) {
                 effects[i] = effects[effects.length - 1];
                 effects.pop();
             }

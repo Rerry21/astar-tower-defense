@@ -10,7 +10,6 @@ export class Projectile {
         this.size = tower.projectileSize;
         this.aimX = target.x;
         this.aimY = target.y;
-        this.landed = false;
     }
 
     update(dt, enemies, effects) {
@@ -40,8 +39,6 @@ export class Projectile {
     }
 
     explode(enemies, effects) {
-        this.landed = true;
-
         if (this.splashPx === 0) {
             this.target.takeDamage(this.damage);
             return;

@@ -26,6 +26,12 @@ const SELL_BTN = { x: 748, y: 234, w: 190, h: 26 };
 
 const RESTART = { x: 400, y: 340, w: 160, h: 48 };
 
+const HINTS = [
+    "1-3 tower | click place/select | R-click sell",
+    "Space wave | P pause | F speed | U upgrade | T target",
+    "D debug | V paths | A A* viewer | M difficulty",
+];
+
 function inside(x, y, r) {
     return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
 }
@@ -261,12 +267,11 @@ export class HUD {
 
         for (let i = 0; i < TOWER_BUTTONS.length; i++) this.drawTowerButton(ctx, TOWER_BUTTONS[i], i, game);
 
-        ctx.font = "11px monospace";
+        ctx.font = "10px monospace";
         ctx.textAlign = "left";
         ctx.textBaseline = "middle";
         ctx.fillStyle = "#8b8b99";
-        ctx.fillText("1-3: tower | L-click: place/select | R-click: sell", 500, 698);
-        ctx.fillText("Space wave | P pause | F speed | D debug | V paths | U upgrade | T target", 500, 711);
+        for (let i = 0; i < HINTS.length; i++) ctx.fillText(HINTS[i], 500, 693 + i * 11);
 
         if (game.selectedTower && state.status === "playing") this.renderPanel(ctx, game);
         this.renderNextWave(ctx, game);

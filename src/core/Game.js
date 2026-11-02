@@ -17,7 +17,6 @@ import { FloatingText } from "../ui/FloatingText.js";
 
 const CELL_SIZE = 32;
 const SPEEDS = [1, 2, 3];
-const STRESS_COUNT = 50;
 
 export class Game {
     constructor(canvas) {
@@ -108,7 +107,6 @@ export class Game {
         else if (key === "u") this.runAction("upgrade");
         else if (key === "t") this.runAction("targeting");
         else if (key === "m") this.cycleDifficulty();
-        else if (key === "k") this.stressTest();
         else if (key === "a") this.visualizer.toggle();
         else if (key === "s") this.visualizer.togglePause();
         else if (key === "arrowright") this.visualizer.stepOnce();
@@ -134,11 +132,6 @@ export class Game {
         else if (action === "sell") this.sellSelected();
         else if (action === "targeting") this.cycleTargeting();
         else if (action.startsWith("tower:")) this.towers.selectedType = action.slice(6);
-    }
-
-    stressTest() {
-        if (!this.showDebug || this.state.status !== "playing") return;
-        for (let i = 0; i < STRESS_COUNT; i++) this.enemies.spawn("basic");
     }
 
     cycleDifficulty() {
@@ -330,7 +323,6 @@ export class Game {
         );
         ctx.fillText(`Repaths: last change ${this.enemies.lastRepaths} | total ${this.enemies.totalRepaths}`, 10, 64);
         ctx.fillText(`Path cache: ${cache.hits} hits / ${cache.misses} A* runs`, 10, 82);
-        ctx.fillText(`Shots: ${this.projectiles.fired} | Hits: ${this.projectiles.hits}`, 10, 100);
-        ctx.fillText(`Enemies: ${this.enemies.enemies.length} | Projectiles: ${this.projectiles.items.length}`, 10, 118);
+        ctx.fillText(`Enemies: ${this.enemies.enemies.length} | Projectiles: ${this.projectiles.items.length}`, 10, 100);
     }
 }
